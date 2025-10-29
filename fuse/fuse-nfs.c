@@ -81,14 +81,22 @@ static const struct fuse_opt fuse_nfs_options[] = {
 
 static int map_uid(int possible_uid) {
     if (args.custom_uid != -1 && possible_uid == args.custom_uid){
+#if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 18)
+        return fuse_get_context()->owner_uid;
+#else
         return fuse_get_context()->uid;
+#endif
     }
     return possible_uid;
 }
 
 static int map_gid(int possible_gid) {
     if (args.custom_gid != -1 && possible_gid == args.custom_gid){
+#if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 18)
+        return fuse_get_context()->owner_gid;
+#else
         return fuse_get_context()->gid;
+#endif
     }
     return possible_gid;
 }
@@ -161,21 +169,29 @@ generic_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
  * have are overriding the credentials via url arguments.
  */
 static void update_rpc_credentials(void) {
+	struct fuse_context *ctx = fuse_get_context();
+#if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 18)
+	const uid_t uid = ctx->owner_uid;
+	const uid_t gid = ctx->owner_gid;
+#else
+	const uid_t uid = ctx->uid;
+	const uid_t gid = ctx->gid;
+#endif
 	if (args.custom_uid == -1  && !args.allow_other_own_ids) {
-		nfs_set_uid(nfs, fuse_get_context()->uid);
+		nfs_set_uid(nfs, uid);
 	} else if ((args.custom_uid == -1 ||
-                    fuse_get_context()->uid != mount_user_uid)
+                    uid != mount_user_uid)
                    && args.allow_other_own_ids) {
-		nfs_set_uid(nfs, fuse_get_context()->uid);
+		nfs_set_uid(nfs, uid);
 	} else {
 		nfs_set_uid(nfs, args.custom_uid);
 	}
 	if (args.custom_gid == -1 && !args.allow_other_own_ids) {
-		nfs_set_gid(nfs, fuse_get_context()->gid);
+		nfs_set_gid(nfs, gid);
         } else if ((args.custom_gid == -1 ||
-                    fuse_get_context()->gid != mount_user_gid)
+                    gid != mount_user_gid)
                    && args.allow_other_own_ids) {
-		nfs_set_gid(nfs, fuse_get_context()->gid);
+		nfs_set_gid(nfs, gid);
 	} else {
 		nfs_set_gid(nfs, args.custom_gid);
 	}
@@ -801,6 +817,13 @@ fuse_nfs_statfs(const char *path, struct statvfs* stbuf)
 	return cb_data.status;
 }
 
+static void *fuse_nfs_init(struct fuse_conn_info *conn, struct fuse_config *conf) {
+#if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 18)
+	if (conn -> capable & FUSE_CAP_ALLOW_IDMAP)
+		conn->want |= FUSE_CAP_OWNER_UID_GID_EXT | FUSE_CAP_ALLOW_IDMAP;
+#endif
+}
+
 static struct fuse_operations nfs_oper = {
 	.chmod		= fuse_nfs_chmod,
 	.chown		= fuse_nfs_chown,
@@ -823,6 +846,7 @@ static struct fuse_operations nfs_oper = {
 	.truncate	= fuse_nfs_truncate,
 	.write		= fuse_nfs_write,
         .statfs 	= fuse_nfs_statfs,
+	.init		= fuse_nfs_init,
 };
 
 void print_help(char *name)

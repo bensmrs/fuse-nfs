@@ -17,23 +17,22 @@
 */
 /* A FUSE filesystem based on libnfs. */
 
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 30
 #define _FILE_OFFSET_BITS 64
 
 #include "../config.h"
 
-#include <fuse.h>
+#include <fuse3/fuse.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <getopt.h>
 #include <poll.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <sys/types.h>
 #include <nfsc/libnfs.h>
+#include <utime.h>
 
 #ifndef FUSE_STAT
 #define FUSE_STAT stat
@@ -188,7 +187,8 @@ stat64_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 }
 
 static int
-fuse_nfs_getattr(const char *path, struct FUSE_STAT *stbuf)
+fuse_nfs_getattr(const char *path, struct FUSE_STAT *stbuf,
+	         struct fuse_file_info *fi)
 {
 	struct nfs_stat_64 st;
 	struct sync_cb_data cb_data;
@@ -255,7 +255,8 @@ readdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 
 static int
 fuse_nfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
-		 off_t offset, struct fuse_file_info *fi)
+		 off_t offset, struct fuse_file_info *fi,
+		 enum fuse_readdir_flags flags)
 {
 	struct nfsdir *nfsdir;
 	struct nfsdirent *nfsdirent;
@@ -277,7 +278,7 @@ fuse_nfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 
 	nfsdir = cb_data.return_data;
 	while ((nfsdirent = nfs_readdir(nfs, nfsdir)) != NULL) {
-		filler(buf, nfsdirent->name, NULL, 0);
+		filler(buf, nfsdirent->name, NULL, 0, 0);
 	}
 
 	nfs_closedir(nfs, nfsdir);
@@ -474,18 +475,50 @@ static int fuse_nfs_create(const char *path, mode_t mode, struct fuse_file_info 
 	return cb_data.status;
 }
 
-static int fuse_nfs_utime(const char *path, struct utimbuf *times)
+static int
+fuse_nfs_utimens(const char *path, const struct timespec tv[2],
+	         struct fuse_file_info *fi)
 {
 	struct sync_cb_data cb_data;
+	struct utimbuf ut;
+        time_t now = time(NULL);
 	int ret;
 
-	LOG("fuse_nfs_utime entered [%s]\n", path);
+	LOG("fuse_nfs_utimens entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
+	if (tv == NULL) {
+		ut.actime = now;
+		ut.modtime = now;
+	} else {
+		if (tv[0].tv_nsec == UTIME_NOW) {
+			ut.actime = now;
+		}
+
+		if (tv[1].tv_nsec == UTIME_NOW) {
+			ut.modtime = now;
+		}
+
+		// libnfs does not support UTIME_OMIT, we handle it on a best
+		// effort.
+		if (tv[0].tv_nsec == UTIME_OMIT) {
+			if (tv[1].tv_nsec == UTIME_OMIT) {
+				ut.actime = now;
+				ut.modtime = now;
+			} else {
+				ut.actime = tv[1].tv_sec;
+				ut.modtime = tv[1].tv_sec;
+			}
+		} else if (tv[1].tv_nsec == UTIME_OMIT) {
+			ut.actime = tv[0].tv_sec;
+			ut.modtime = tv[0].tv_sec;
+		}
+	}
+
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
-	ret = nfs_utime_async(nfs, path, times, generic_cb, &cb_data);
+	ret = nfs_utime_async(nfs, path, &ut, generic_cb, &cb_data);
 	pthread_mutex_unlock(&nfs_mutex);
 	if (ret < 0) {
                 LOG("fuse_nfs_utime returned %d. %s\n", ret,
@@ -614,7 +647,8 @@ static int fuse_nfs_symlink(const char *from, const char *to)
 	return cb_data.status;
 }
 
-static int fuse_nfs_rename(const char *from, const char *to)
+static int
+fuse_nfs_rename(const char *from, const char *to, unsigned int flags)
 {
 	struct sync_cb_data cb_data;
 	int ret;
@@ -658,7 +692,7 @@ fuse_nfs_link(const char *from, const char *to)
 }
 
 static int
-fuse_nfs_chmod(const char *path, mode_t mode)
+fuse_nfs_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
 {
 	struct sync_cb_data cb_data;
 	int ret;
@@ -679,7 +713,9 @@ fuse_nfs_chmod(const char *path, mode_t mode)
 	return cb_data.status;
 }
 
-static int fuse_nfs_chown(const char *path, uid_t uid, gid_t gid)
+static int
+fuse_nfs_chown(const char *path, uid_t uid, gid_t gid,
+	       struct fuse_file_info *fi)
 {
 	struct sync_cb_data cb_data;
 	int ret;
@@ -702,7 +738,8 @@ static int fuse_nfs_chown(const char *path, uid_t uid, gid_t gid)
 	return cb_data.status;
 }
 
-static int fuse_nfs_truncate(const char *path, off_t size)
+static int
+fuse_nfs_truncate(const char *path, off_t size, struct fuse_file_info *fi)
 {
 	struct sync_cb_data cb_data;
 	int ret;
@@ -813,7 +850,7 @@ static struct fuse_operations nfs_oper = {
 	.release	= fuse_nfs_release,
 	.rmdir		= fuse_nfs_rmdir,
 	.unlink		= fuse_nfs_unlink,
-	.utime		= fuse_nfs_utime,
+	.utimens	= fuse_nfs_utimens,
 	.rename		= fuse_nfs_rename,
 	.symlink	= fuse_nfs_symlink,
 	.truncate	= fuse_nfs_truncate,

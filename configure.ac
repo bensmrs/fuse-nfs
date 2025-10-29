@@ -20,8 +20,11 @@ if test "$SAVE_CFLAGS" = "x"; then
   CFLAGS=""
 fi
 
+PKG_CHECK_MODULES([FUSE3], [fuse3 >= 3.0], [], [AC_MSG_ERROR([libfuse3 not found. You need to install libfuse3-dev])])
+
 # We always want 64 bit file offsets
-CFLAGS="${CFLAGS} -D_FILE_OFFSET_BITS=64"
+CFLAGS="${CFLAGS} ${FUSE3_CFLAGS} -D_FILE_OFFSET_BITS=64"
+LIBS="${LIBS} ${FUSE3_LIBS}"
 
 if test "$ac_cv_prog_gcc" = yes; then
    WARN_CFLAGS="-Wall -Werror -Wshadow -Wno-write-strings -Wstrict-prototypes -Wpointer-arith -Wcast-align -Wno-strict-aliasing"
@@ -31,10 +34,7 @@ AC_SUBST(WARN_CFLAGS)
 AC_CONFIG_HEADER(config.h)
 
 AC_HEADER_ASSERT
-AC_CHECK_HEADER([fuse.h], [], [AC_MSG_ERROR([fuse.h is missing. You need to install libfuse-dev])], [])
 AC_CHECK_HEADER([nfsc/libnfs.h], [], [AC_MSG_ERROR([libnfs.h is missing. You need to install libnfs-dev])], [])
-
-AC_CHECK_HEADERS([fuse.h])
 
 AC_CACHE_CHECK([for st_atim support],libiscsi_cv_HAVE_ST_ATIM,[
 AC_TRY_COMPILE([

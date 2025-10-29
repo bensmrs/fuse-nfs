@@ -39,20 +39,6 @@
 #define FUSE_STAT stat
 #endif
 
-#define LOG(...) do {                                              \
-        if (logfile) {                                          \
-                FILE *fh = fopen(logfile, "a+");                \
-                time_t t = time(NULL);                          \
-                char tmp[256];                                  \
-                strftime(tmp, sizeof(tmp), "%T", localtime(&t));\
-                fprintf(fh, "[NFS] %s ", tmp);			\
-                fprintf(fh, __VA_ARGS__);                       \
-                fclose(fh);                                     \
-        }                                                       \
-} while (0);
-
-static char *logfile;
-
 /* Only one thread at a time can enter libnfs */
 static pthread_mutex_t nfs_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -203,8 +189,6 @@ stat64_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
-	LOG("stat64_cb status:%d\n", status);
-
 	if (status < 0) {
 		return;
 	}
@@ -218,8 +202,6 @@ fuse_nfs_getattr(const char *path, struct FUSE_STAT *stbuf,
 	struct nfs_stat_64 st;
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_getattr entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 	cb_data.return_data = &st;
@@ -270,8 +252,6 @@ readdir_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
-	LOG("readdir_cb status:%d\n", status);
-
 	if (status < 0) {
 		return;
 	}
@@ -287,8 +267,6 @@ fuse_nfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	struct nfsdirent *nfsdirent;
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_readdir entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -331,8 +309,6 @@ fuse_nfs_readlink(const char *path, char *buf, size_t size)
 	struct sync_cb_data cb_data;
 	int ret;
 
-	LOG("fuse_nfs_readlink entered [%s]\n", path);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 	*buf = 0;
 	cb_data.return_data = buf;
@@ -358,8 +334,6 @@ open_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 	cb_data->is_finished = 1;
 	cb_data->status = status;
 
-	LOG("open_cb status:%d\n", status);
-
 	if (status < 0) {
 		return;
 	}
@@ -371,8 +345,6 @@ fuse_nfs_open(const char *path, struct fuse_file_info *fi)
 {
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_open entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -431,8 +403,6 @@ fuse_nfs_read(const char *path, char *buf, size_t size,
 	struct sync_cb_data cb_data;
 	int ret;
 
-	LOG("fuse_nfs_read entered [%s]\n", path);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -459,8 +429,6 @@ static int fuse_nfs_write(const char *path, const char *buf, size_t size,
 	struct sync_cb_data cb_data;
 	int ret;
 
-	LOG("fuse_nfs_write entered [%s]\n", path);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -486,8 +454,6 @@ static int fuse_nfs_create(const char *path, mode_t mode, struct fuse_file_info 
 	struct sync_cb_data cb_data;
 	int ret = 0;
 
-	LOG("fuse_nfs_create entered [%s]\n", path);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -512,8 +478,6 @@ fuse_nfs_utimens(const char *path, const struct timespec tv[2],
 	struct utimbuf ut;
         time_t now = time(NULL);
 	int ret;
-
-	LOG("fuse_nfs_utimens entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -550,8 +514,6 @@ fuse_nfs_utimens(const char *path, const struct timespec tv[2],
 	ret = nfs_utime_async(nfs, path, &ut, generic_cb, &cb_data);
 	pthread_mutex_unlock(&nfs_mutex);
 	if (ret < 0) {
-                LOG("fuse_nfs_utime returned %d. %s\n", ret,
-                    nfs_get_error(nfs));
 		return ret;
 	}
 	wait_for_nfs_reply(nfs, &cb_data);
@@ -563,8 +525,6 @@ static int fuse_nfs_unlink(const char *path)
 {
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_unlink entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -585,8 +545,6 @@ static int fuse_nfs_rmdir(const char *path)
 	struct sync_cb_data cb_data;
 	int ret;
 
-	LOG("fuse_nfs_mknod entered [%s]\n", path);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -606,8 +564,6 @@ fuse_nfs_mkdir(const char *path, mode_t mode)
 {
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_mkdir entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -639,8 +595,6 @@ static int fuse_nfs_mknod(const char *path, mode_t mode, dev_t rdev)
 	struct sync_cb_data cb_data;
 	int ret;
 
-	LOG("fuse_nfs_mknod entered [%s]\n", path);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -659,8 +613,6 @@ static int fuse_nfs_symlink(const char *from, const char *to)
 {
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_symlink entered [%s -> %s]\n", from, to);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -682,8 +634,6 @@ fuse_nfs_rename(const char *from, const char *to, unsigned int flags)
 	struct sync_cb_data cb_data;
 	int ret;
 
-	LOG("fuse_nfs_rename entered [%s -> %s]\n", from, to);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -703,8 +653,6 @@ fuse_nfs_link(const char *from, const char *to)
 {
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_link entered [%s -> %s]\n", from, to);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -726,8 +674,6 @@ fuse_nfs_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
 	struct sync_cb_data cb_data;
 	int ret;
 
-	LOG("fuse_nfs_chmod entered [%s]\n", path);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -748,8 +694,6 @@ fuse_nfs_chown(const char *path, uid_t uid, gid_t gid,
 {
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_chown entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -773,8 +717,6 @@ fuse_nfs_truncate(const char *path, off_t size, struct fuse_file_info *fi)
 	struct sync_cb_data cb_data;
 	int ret;
 
-	LOG("fuse_nfs_truncate entered [%s]\n", path);
-
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -796,8 +738,6 @@ fuse_nfs_fsync(const char *path, int isdatasync,
 	struct nfsfh *nfsfh = (struct nfsfh *)fi->fh;
 	struct sync_cb_data cb_data;
 	int ret;
-
-	LOG("fuse_nfs_fsync entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
@@ -834,8 +774,6 @@ fuse_nfs_statfs(const char *path, struct statvfs* stbuf)
         struct statvfs svfs;
 
 	struct sync_cb_data cb_data;
-
-	LOG("fuse_nfs_statfs entered [%s]\n", path);
 
         memset(&cb_data, 0, sizeof(struct sync_cb_data));
 	cb_data.return_data = &svfs;
@@ -998,7 +936,6 @@ int main(int argc, char *argv[])
 		goto finished;
 	}
 
-	LOG("Starting fuse_main()\n");
 	ret = fuse_main(fuse_args.argc, fuse_args.argv, &nfs_oper, NULL);
 
 finished:

@@ -29,18 +29,11 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
-#ifndef WIN32
 #include <poll.h>
-#endif
 #include <pthread.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <nfsc/libnfs.h>
-
-#ifdef WIN32
-#include <winsock2.h>
-#include <win32/win32_compat.h>
-#endif
 
 #ifndef FUSE_STAT
 #define FUSE_STAT stat
@@ -75,20 +68,6 @@ gid_t mount_user_gid;
 int fusenfs_allow_other_own_ids=0;
 int fuse_default_permissions=1;
 int fuse_multithreads=1;
-
-#ifdef __MINGW32__
-gid_t getgid(){
-	if( custom_gid == -1 )
-		return 65534;
-	return custom_gid;
-}
-
-uid_t getuid(){
-	if( custom_uid == -1 )
-		return 65534;
-	return custom_uid;
-}
-#endif
 
 static int map_uid(int possible_uid) {
     if (custom_uid != -1 && possible_uid == custom_uid){
@@ -240,7 +219,7 @@ fuse_nfs_getattr(const char *path, struct FUSE_STAT *stbuf)
 	stbuf->st_blksize      = st.nfs_blksize;
 	stbuf->st_blocks       = st.nfs_blocks;
 
-#if defined(HAVE_ST_ATIM) || defined(__MINGW32__)
+#if defined(HAVE_ST_ATIM)
 	stbuf->st_atim.tv_sec  = st.nfs_atime;
 	stbuf->st_atim.tv_nsec = st.nfs_atime_nsec;
 	stbuf->st_mtim.tv_sec  = st.nfs_mtime;
@@ -1214,11 +1193,6 @@ int main(int argc, char *argv[])
 
 	if (idstr = strstr(url, "uid=")) { custom_uid = atoi(&idstr[4]); }
 	if (idstr = strstr(url, "gid=")) { custom_gid = atoi(&idstr[4]); }
-
-	#ifdef WIN32
-	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2,2),&wsaData);
-	#endif
 
 	ret = nfs_mount(nfs, urls->server, urls->path);
 	if (ret != 0) {

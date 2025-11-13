@@ -17,7 +17,7 @@
 */
 /* A FUSE filesystem based on libnfs. */
 
-#define FUSE_USE_VERSION 30
+#define FUSE_USE_VERSION 9999
 #define _FILE_OFFSET_BITS 64
 
 #include "../config.h"
@@ -801,6 +801,10 @@ fuse_nfs_statfs(const char *path, struct statvfs* stbuf)
 	return cb_data.status;
 }
 
+static void *fuse_nfs_init(struct fuse_conn_info *conn, struct fuse_config *conf) {
+	assert(fuse_set_feature_flag(conn, FUSE_CAP_ALLOW_IDMAP));
+}
+
 static struct fuse_operations nfs_oper = {
 	.chmod		= fuse_nfs_chmod,
 	.chown		= fuse_nfs_chown,
@@ -822,7 +826,8 @@ static struct fuse_operations nfs_oper = {
 	.symlink	= fuse_nfs_symlink,
 	.truncate	= fuse_nfs_truncate,
 	.write		= fuse_nfs_write,
-        .statfs 	= fuse_nfs_statfs,
+	.statfs 	= fuse_nfs_statfs,
+	.init		= fuse_nfs_init,
 };
 
 void print_help(char *name)

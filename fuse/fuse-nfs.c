@@ -80,31 +80,31 @@ static const struct fuse_opt fuse_nfs_options[] = {
 #undef FUSE_NFS_OPT
 
 static int map_uid(int possible_uid) {
-    if (args.custom_uid != -1 && possible_uid == args.custom_uid){
-        return fuse_get_context()->uid;
-    }
-    return possible_uid;
+	if (args.custom_uid != -1 && possible_uid == args.custom_uid){
+		return fuse_get_context()->uid;
+	}
+	return possible_uid;
 }
 
 static int map_gid(int possible_gid) {
-    if (args.custom_gid != -1 && possible_gid == args.custom_gid){
-        return fuse_get_context()->gid;
-    }
-    return possible_gid;
+	if (args.custom_gid != -1 && possible_gid == args.custom_gid){
+		return fuse_get_context()->gid;
+	}
+	return possible_gid;
 }
 
 static int map_reverse_uid(int possible_uid) {
-    if (args.custom_uid != -1 && possible_uid == getuid()) {
-        return args.custom_uid;
-    }
-    return possible_uid;
+	if (args.custom_uid != -1 && possible_uid == getuid()) {
+		return args.custom_uid;
+	}
+	return possible_uid;
 }
 
 static int map_reverse_gid(int possible_gid) {
-    if (args.custom_gid != -1 && possible_gid == getgid()){
-        return args.custom_gid;
-    }
-    return possible_gid;
+	if (args.custom_gid != -1 && possible_gid == getgid()){
+		return args.custom_gid;
+	}
+	return possible_gid;
 }
 
 struct sync_cb_data {
@@ -172,7 +172,7 @@ static void update_rpc_credentials(void) {
 	}
 	if (args.custom_gid == -1 && !args.allow_other_own_ids) {
 		nfs_set_gid(nfs, fuse_get_context()->gid);
-        } else if ((args.custom_gid == -1 ||
+	} else if ((args.custom_gid == -1 ||
                     fuse_get_context()->gid != mount_user_gid)
                    && args.allow_other_own_ids) {
 		nfs_set_gid(nfs, fuse_get_context()->gid);
@@ -203,7 +203,7 @@ fuse_nfs_getattr(const char *path, struct FUSE_STAT *stbuf,
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 	cb_data.return_data = &st;
 
 	pthread_mutex_lock(&nfs_mutex);
@@ -268,10 +268,10 @@ fuse_nfs_readdir(const char *path, void *buf, fuse_fill_dir_t filler,
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
-        update_rpc_credentials();
+	update_rpc_credentials();
 	ret = nfs_opendir_async(nfs, path, readdir_cb, &cb_data);
 	pthread_mutex_unlock(&nfs_mutex);
 	if (ret < 0) {
@@ -309,13 +309,13 @@ fuse_nfs_readlink(const char *path, char *buf, size_t size)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 	*buf = 0;
 	cb_data.return_data = buf;
 	cb_data.max_size = size;
 
 	pthread_mutex_lock(&nfs_mutex);
-        update_rpc_credentials();
+	update_rpc_credentials();
 	ret = nfs_readlink_async(nfs, path, readlink_cb, &cb_data);
 	pthread_mutex_unlock(&nfs_mutex);
 	if (ret < 0) {
@@ -346,13 +346,13 @@ fuse_nfs_open(const char *path, struct fuse_file_info *fi)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
-        update_rpc_credentials();
+	update_rpc_credentials();
 
 	fi->fh = 0;
-        ret = nfs_open_async(nfs, path, fi->flags, open_cb, &cb_data);
+	ret = nfs_open_async(nfs, path, fi->flags, open_cb, &cb_data);
 	pthread_mutex_unlock(&nfs_mutex);
 	if (ret < 0) {
 		return ret;
@@ -369,7 +369,7 @@ static int fuse_nfs_release(const char *path, struct fuse_file_info *fi)
 	struct sync_cb_data cb_data;
 	struct nfsfh *nfsfh = (struct nfsfh *)fi->fh;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	nfs_close_async(nfs, nfsfh, generic_cb, &cb_data);
@@ -403,7 +403,7 @@ fuse_nfs_read(const char *path, char *buf, size_t size,
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -429,10 +429,10 @@ static int fuse_nfs_write(const char *path, const char *buf, size_t size,
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
-        update_rpc_credentials();
+	update_rpc_credentials();
 #ifdef LIBNFS_API_V2
 	ret = nfs_pwrite_async(nfs, nfsfh, discard_const(buf), size, offset,
 			       generic_cb, &cb_data);
@@ -454,7 +454,7 @@ static int fuse_nfs_create(const char *path, mode_t mode, struct fuse_file_info 
 	struct sync_cb_data cb_data;
 	int ret = 0;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -476,10 +476,10 @@ fuse_nfs_utimens(const char *path, const struct timespec tv[2],
 {
 	struct sync_cb_data cb_data;
 	struct utimbuf ut;
-        time_t now = time(NULL);
+	time_t now = time(NULL);
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	if (tv == NULL) {
 		ut.actime = now;
@@ -526,11 +526,11 @@ static int fuse_nfs_unlink(const char *path)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
-        ret = nfs_unlink_async(nfs, path, generic_cb, &cb_data);
+	ret = nfs_unlink_async(nfs, path, generic_cb, &cb_data);
 	pthread_mutex_unlock(&nfs_mutex);
 	if (ret < 0) {
 		return ret;
@@ -545,7 +545,7 @@ static int fuse_nfs_rmdir(const char *path)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -565,7 +565,7 @@ fuse_nfs_mkdir(const char *path, mode_t mode)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -595,7 +595,7 @@ static int fuse_nfs_mknod(const char *path, mode_t mode, dev_t rdev)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -614,7 +614,7 @@ static int fuse_nfs_symlink(const char *from, const char *to)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -634,7 +634,7 @@ fuse_nfs_rename(const char *from, const char *to, unsigned int flags)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -654,7 +654,7 @@ fuse_nfs_link(const char *from, const char *to)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -674,7 +674,7 @@ fuse_nfs_chmod(const char *path, mode_t mode, struct fuse_file_info *fi)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -695,7 +695,7 @@ fuse_nfs_chown(const char *path, uid_t uid, gid_t gid,
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -717,7 +717,7 @@ fuse_nfs_truncate(const char *path, off_t size, struct fuse_file_info *fi)
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
@@ -739,11 +739,11 @@ fuse_nfs_fsync(const char *path, int isdatasync,
 	struct sync_cb_data cb_data;
 	int ret;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 
 	pthread_mutex_lock(&nfs_mutex);
 	update_rpc_credentials();
-        ret = nfs_fsync_async(nfs, nfsfh, generic_cb, &cb_data);
+	ret = nfs_fsync_async(nfs, nfsfh, generic_cb, &cb_data);
 	pthread_mutex_unlock(&nfs_mutex);
 	if (ret < 0) {
 		return ret;
@@ -770,33 +770,33 @@ statvfs_cb(int status, struct nfs_context *nfs, void *data, void *private_data)
 static int
 fuse_nfs_statfs(const char *path, struct statvfs* stbuf)
 {
-        int ret;
-        struct statvfs svfs;
+	int ret;
+	struct statvfs svfs;
 
 	struct sync_cb_data cb_data;
 
-        memset(&cb_data, 0, sizeof(struct sync_cb_data));
+	memset(&cb_data, 0, sizeof(struct sync_cb_data));
 	cb_data.return_data = &svfs;
 
 	pthread_mutex_lock(&nfs_mutex);
-        ret = nfs_statvfs_async(nfs, path, statvfs_cb, &cb_data);
+	ret = nfs_statvfs_async(nfs, path, statvfs_cb, &cb_data);
 	pthread_mutex_unlock(&nfs_mutex);
 	if (ret < 0) {
 		return ret;
 	}
 	wait_for_nfs_reply(nfs, &cb_data);
-  
-        stbuf->f_bsize      = svfs.f_bsize;
-        stbuf->f_frsize     = svfs.f_frsize;
-        stbuf->f_fsid       = svfs.f_fsid;
-        stbuf->f_flag       = svfs.f_flag;
-        stbuf->f_namemax    = svfs.f_namemax;
-        stbuf->f_blocks     = svfs.f_blocks;
-        stbuf->f_bfree      = svfs.f_bfree;
-        stbuf->f_bavail     = svfs.f_bavail;
-        stbuf->f_files      = svfs.f_files;
-        stbuf->f_ffree      = svfs.f_ffree;
-        stbuf->f_favail     = svfs.f_favail;
+
+	stbuf->f_bsize      = svfs.f_bsize;
+	stbuf->f_frsize     = svfs.f_frsize;
+	stbuf->f_fsid       = svfs.f_fsid;
+	stbuf->f_flag       = svfs.f_flag;
+	stbuf->f_namemax    = svfs.f_namemax;
+	stbuf->f_blocks     = svfs.f_blocks;
+	stbuf->f_bfree      = svfs.f_bfree;
+	stbuf->f_bavail     = svfs.f_bavail;
+	stbuf->f_files      = svfs.f_files;
+	stbuf->f_ffree      = svfs.f_ffree;
+	stbuf->f_favail     = svfs.f_favail;
 
 	return cb_data.status;
 }
@@ -864,19 +864,19 @@ void print_help(char *name)
 }
 
 static int fuse_nfs_optparse_proc(void *data, const char *arg, int key, struct fuse_args *outargs){
-  (void)key;
-  (void)outargs;
-  struct fuse_nfs_args* args = data;
-  if (key == FUSE_OPT_KEY_NONOPT && !args->nfs_share)
-  {
-    args->nfs_share = arg;
-    return 0;
-  } else if (!args->mountpoint)
-  {
-    args->mountpoint = arg;
-    return 1;
-  }
-  return 1;
+	(void)key;
+	(void)outargs;
+	struct fuse_nfs_args* args = data;
+	if (key == FUSE_OPT_KEY_NONOPT && !args->nfs_share)
+	{
+		args->nfs_share = arg;
+		return 0;
+	} else if (!args->mountpoint)
+	{
+		args->mountpoint = arg;
+		return 1;
+	}
+	return 1;
 }
 
 int main(int argc, char *argv[])
